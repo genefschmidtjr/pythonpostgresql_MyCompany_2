@@ -2,6 +2,11 @@ import sqlalchemy
 from sqlalchemy import text
 
 
+def main():
+    process_dimension()
+    return
+
+
 # generic connection
 def connect(user, password, db, host='localhost', port=5432):
     url = 'postgresql://{}:{}@{}:{}/{}'
@@ -14,8 +19,8 @@ def connect(user, password, db, host='localhost', port=5432):
     return con, meta
 
 
-def flattenSource():
-    sourceCon, sourceMeta = connect('Gene', 'Gene', 'MyCompany')
+def flatten_source():
+    sourcecon, sourcemeta = connect('Gene', 'Gene', 'MyCompany')
 
     sql = text('select 			p.id as application_product_id, \
 				                pt.id as application_product_type_id, \
@@ -25,28 +30,29 @@ def flattenSource():
 				                p.description as product_description \
                 from			product p inner join product_type pt on p.product_type_id = pt.id')
 
-    staging_dim_product = sourceCon.engine.execute(sql)
+    staging_dim_product = sourcecon.engine.execute(sql)
 
     return staging_dim_product
 
-def processDimension():
+
+def process_dimension():
     destcon, destmeta = connect('Gene', 'Gene', 'MyCompanyWarehouse')
 
     dimproduct = destmeta.tables['dim_product']
 
-    truncatecluase = text('TRUNCATE TABLE dim_product')
+    truncateclause = text('TRUNCATE TABLE dim_product')
 
-    destcon.engine.execute(truncatecluase)
+    destcon.engine.execute(truncateclause)
 
-    source = flattenSource()
+    source = flatten_source()
 
-    blankinsrt = dimproduct.insert().values(application_product_id=0,
+    blankinsert = dimproduct.insert().values(application_product_id=0,
                                     application_product_type_id=0,
                                     product_description='not found',
                                     product_name='not found',
                                     product_type_description='not found',
                                     product_type_name='not found')
-    destcon.engine.execute(blankinsrt)
+    destcon.engine.execute(blankinsert)
 
     for row in source:
         clause = dimproduct.insert().values(application_product_id=row.application_product_id,
@@ -60,4 +66,7 @@ def processDimension():
 
     return
 
-processDimension()
+
+if __name__ == "__main__":
+    main()
+
